@@ -5,31 +5,41 @@ Codex can use Otari as a custom model provider over the Responses API.
 ## Route Codex through Otari
 
 1. Create a key on the dashboard's **API keys** page.
-2. Add a provider to `~/.codex/config.toml`:
+2. Add a provider and a profile to the end of `~/.codex/config.toml`:
 
    ```toml
-   model_provider = "otari"
-   model = "openai:gpt-5.4"
-
    [model_providers.otari]
    name = "Otari"
    base_url = "https://api.otari.ai/api/v1"
    wire_api = "responses"
    env_key = "OTARI_API_KEY"
+
+   [profiles.otari]
+   model_provider = "otari"
+   model = "openai:gpt-5.4"
    ```
 
-3. Export the key and start Codex:
+   Both are tables, so they can go after whatever the file already holds, and
+   your own top-level `model` and `model_provider` stay as they are.
+
+3. Export the key and start Codex with the profile:
 
    ```bash
    export OTARI_API_KEY="<your-otari-key>"
-   codex
+   codex --profile otari
    ```
+
+To make Otari the default for every session instead, set `profile = "otari"`
+at the top of the file, above the first `[table]`. A key written below a table
+heading belongs to that table, and a key the file already sets, such as
+`model`, must be edited rather than added a second time, or Codex refuses the
+file.
 
 - `base_url` must end in `/api/v1`, because Codex adds `/responses`. EU accounts
   use `https://eu.api.otari.ai/api/v1`, and a gateway you run uses its URL plus
   `/api/v1`. See [Base URL](api-reference.md#base-url).
-- `model_provider` must select the custom provider, or Codex keeps using its
-  built-in OpenAI provider.
+- The profile's `model_provider` must select the custom provider, or Codex
+  keeps using its built-in OpenAI provider.
 
 The [Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
 lists every custom-provider option.
@@ -37,7 +47,8 @@ lists every custom-provider option.
 ## Choosing a model
 
 Codex sends `model` unchanged, so write it as Otari spells it, such as
-`openai:gpt-5.4` ([Model format](models.md#model-format)).
+`openai:gpt-5.4` ([Model format](models.md#model-format)). Set it in the
+`otari` profile, or per session with `codex --profile otari -m <model>`.
 [Listing available models](models.md#listing-available-models) shows which
 models your key can use.
 
@@ -57,8 +68,10 @@ describes, built for your Codex version.
 
 ## Troubleshooting
 
-- Set `model_provider = "otari"` in your user-level config. Codex ignores it in a
-  project-level config.
+- Put the provider and the profile in your user-level config. Codex ignores
+  `model_provider` in a project-level config.
+- If Codex reports a duplicate key, the file already set that key: edit the
+  existing line instead of adding one.
 - Include `/api/v1` in `base_url`.
 - Start a new Codex session after changing the provider.
 - Set provider credentials and pricing in Otari, not in Codex.
