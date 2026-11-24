@@ -3080,6 +3080,33 @@ def _hook_global_registration_without_repo_only() -> Path | None:
     return None
 
 
+def _registration_has_repo_only(settings_path: Path) -> bool:
+    """Whether `settings_path` already registers otari hook with `--repo-only`, in any event.
+
+    A re-run of `otari hook setup` without the flag rewrites that command and drops it, which
+    turns the person's own gates back on in this repository, so setup says so.
+    """
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    hooks_section = settings.get("hooks") if isinstance(settings, dict) else None
+    if not isinstance(hooks_section, dict):
+        return False
+    for entries in hooks_section.values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+                continue
+            for hook_item in entry["hooks"]:
+                command = hook_item.get("command") if isinstance(hook_item, dict) else None
+                argv = _otari_hook_argv(command) if isinstance(command, str) else None
+                if argv is not None and "--repo-only" in argv:
+                    return True
+    return False
+
+
 @hook.command(name="setup")
 @click.option(
     "--harness",
@@ -3163,6 +3190,7 @@ def hook_setup(harness: str, repo_only: bool) -> None:
     command = shlex.join(argv)
 
     settings_path = root / setup.settings_dir / setup.settings_name
+    dropping_repo_only = not repo_only and _registration_has_repo_only(settings_path)
     pretooluse_created = _merge_hook_entry(settings_path, "PreToolUse", command, matcher=matcher)
     click.echo(f"{'Added' if pretooluse_created else 'Updated'} the PreToolUse hook in {settings_path}.")
     uncovered = [
@@ -3184,6 +3212,11 @@ def hook_setup(harness: str, repo_only: bool) -> None:
     # PreToolUse-only install left both silently unreachable.
     stop_created = _merge_hook_entry(settings_path, "Stop", command)
     click.echo(f"{'Added' if stop_created else 'Updated'} the Stop hook in {settings_path}.")
+    if dropping_repo_only:
+        click.echo(
+            f"Removed --repo-only from the existing registration, so otari hook now also enforces your own "
+            f"gates in {GuardrailOrigin.USER.directory} here. Run `otari hook setup --repo-only` to keep it."
+        )
 
     if repo_only and harness == "claude-code":
         global_settings_path = _hook_global_registration_without_repo_only()

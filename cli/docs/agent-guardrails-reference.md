@@ -548,7 +548,7 @@ Registers the hook in the current Git repository; refuses outside one. When the 
 Re-running `setup`:
 
 - rewrites the registered command in place, matching an existing entry by the executable's name and `hook` alone (an entry naming otari on `PATH` and one naming an install path are the same registration);
-- drops a flag added to the settings file by hand: pass `--repo-only` to `setup` instead;
+- drops a flag added to the settings file by hand: pass `--repo-only` to `setup` instead (when it drops `--repo-only`, it says so);
 - moves otari's command to an entry of its own where an entry holds it beside another hook's, leaving that entry's matcher alone;
 - rewrites every entry in the event that runs otari hook, not only the first.
 

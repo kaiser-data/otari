@@ -527,6 +527,42 @@ def test_setup_rewrites_every_existing_otari_registration(repo: Path) -> None:
     assert _otari_commands(repo) == [f"{_FAKE_OTARI_PATH} hook --harness claude-code"] * 2
 
 
+def test_dropping_an_existing_repo_only_flag_says_so(repo: Path) -> None:
+    """A re-run without the flag turns the person's own gates back on, which must not happen silently."""
+    flagged = f"{_FAKE_OTARI_PATH} hook --harness claude-code --repo-only"
+    _write_repo_settings(repo, [{"hooks": [{"type": "command", "command": flagged}]}])
+    _guardrail_path(repo).write_text(_PATH_ONLY_GATES, encoding="utf-8")
+
+    result = _invoke()
+
+    assert result.exit_code == 0, result.output
+    assert "Removed --repo-only" in result.output
+    assert "otari hook setup --repo-only" in result.output
+
+
+def test_keeping_repo_only_draws_no_removal_notice(repo: Path) -> None:
+    flagged = f"{_FAKE_OTARI_PATH} hook --harness claude-code --repo-only"
+    _write_repo_settings(repo, [{"hooks": [{"type": "command", "command": flagged}]}])
+    _guardrail_path(repo).write_text(_PATH_ONLY_GATES, encoding="utf-8")
+
+    result = _invoke("--repo-only")
+
+    assert result.exit_code == 0, result.output
+    assert "Removed --repo-only" not in result.output
+
+
+def test_a_registration_without_repo_only_draws_no_removal_notice(repo: Path) -> None:
+    _write_repo_settings(
+        repo, [{"hooks": [{"type": "command", "command": f"{_FAKE_OTARI_PATH} hook --harness claude-code"}]}]
+    )
+    _guardrail_path(repo).write_text(_PATH_ONLY_GATES, encoding="utf-8")
+
+    result = _invoke()
+
+    assert result.exit_code == 0, result.output
+    assert "Removed --repo-only" not in result.output
+
+
 def test_repo_only_splits_every_shared_entry_it_finds(repo: Path) -> None:
     """Two shared entries each owe their sibling its own matcher, so both of ours move out."""
     _write_repo_settings(
